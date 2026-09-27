@@ -1,0 +1,141 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #1a2a3a;
+  font-family: "Segoe UI", "Trebuchet MS", "Helvetica Neue", sans-serif;
+  color: #2c2418;
+}
+
+#game-wrap {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, #2a4058 0%, #121c28 100%);
+}
+
+#game {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  image-rendering: auto;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  background: #87ceeb;
+}
+
+.hud {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: max(16px, env(safe-area-inset-left));
+  z-index: 2;
+  pointer-events: none;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #fff8e8;
+  text-shadow: 0 1px 3px rgba(20, 30, 40, 0.7);
+}
+
+.hud.hidden {
+  display: none;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(18, 28, 40, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.overlay.hidden {
+  display: none;
+}
+
+.card {
+  width: min(440px, 100%);
+  padding: 28px 32px 24px;
+  border-radius: 16px;
+  background: linear-gradient(165deg, #fff8ec 0%, #f0e2c8 100%);
+  border: 2px solid rgba(90, 70, 40, 0.18);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+
+.card h1 {
+  margin: 0 0 10px;
+  font-size: clamp(2rem, 5vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #3d2e1a;
+}
+
+.story {
+  margin: 0 0 18px;
+  font-size: 1.05rem;
+  line-height: 1.4;
+  color: #5a4a32;
+}
+
+.controls {
+  margin: 0 0 20px;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #3f3424;
+}
+
+.controls li {
+  margin: 0 0 6px;
+  padding-left: 2px;
+}
+
+.controls strong {
+  color: #2c2418;
+}
+
+.hint {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2a6b4a;
+}
+
+.touch-note {
+  margin: 14px 0 0;
+  font-size: 0.95rem;
+  color: #8a3a2a;
+  font-weight: 600;
+}
+
+.touch-note.hidden {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: 22px 20px 18px;
+  }
+
+  .controls {
+    font-size: 0.9rem;
+  }
+}

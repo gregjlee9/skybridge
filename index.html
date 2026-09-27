@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skybridge</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="game-wrap">
+    <canvas id="game" width="960" height="540" aria-label="Skybridge game"></canvas>
+
+    <div id="hud" class="hud hidden" aria-live="polite">
+      <span id="gem-hud">Gems: 0</span>
+    </div>
+
+    <div id="overlay" class="overlay" role="dialog" aria-labelledby="overlay-title">
+      <div class="card" id="overlay-card">
+        <h1 id="overlay-title">Skybridge</h1>
+        <p id="overlay-story" class="story">A little mole crosses the sky meadows.</p>
+        <ul id="overlay-controls" class="controls">
+          <li><strong>Move:</strong> Arrow keys or A / D</li>
+          <li><strong>Jump:</strong> Space, W, or Up (hold longer for a higher jump)</li>
+          <li><strong>Restart:</strong> R</li>
+          <li><strong>Mute:</strong> M</li>
+        </ul>
+        <p id="overlay-hint" class="hint">Press Space to start.</p>
+        <p id="touch-note" class="touch-note hidden">A keyboard is required to play.</p>
+      </div>
+    </div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>

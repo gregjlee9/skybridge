@@ -250,6 +250,7 @@
       breathe: 0,
       noseTwitch: 0,
       stretch: 0,
+      spin: 0,
       riding: null,
       invuln: 0,
     };
@@ -327,6 +328,7 @@
     p.coyote = 0;
     p.buffer = 0;
     p.airJumps = 1;
+    p.spin = 0;
     p.riding = null;
     p.invuln = 0.6;
     state.flash = 0.35;
@@ -446,6 +448,7 @@
       p.airJumps -= 1;
       p.jumpHeld = true;
       p.stretch = 1;
+      p.spin = 0.001;
       sfxJump();
     }
 
@@ -531,6 +534,12 @@
     if (Math.random() < dt * 0.8) p.noseTwitch = 0.25;
     p.noseTwitch = Math.max(0, p.noseTwitch - dt);
     p.stretch = Math.max(0, p.stretch - dt * 3);
+    if (p.onGround) {
+      p.spin = 0;
+    } else if (p.spin > 0) {
+      p.spin += dt / 0.42;
+      if (p.spin >= 1) p.spin = 0;
+    }
 
     if (p.onGround && Math.abs(p.vx) > 30) {
       p.runPhase += dt * Math.abs(p.vx) * 0.045;
@@ -864,13 +873,15 @@
 
     ctx.save();
     ctx.translate(cx, cy + breathe * 0.3);
-    ctx.scale(facing * stretchX, stretchY);
 
-    // Shadow
+    // Shadow stays flat while the mole flips.
     ctx.fillStyle = "rgba(40, 50, 30, 0.18)";
     ctx.beginPath();
     ctx.ellipse(0, PLAYER_H / 2 - 2, 12, 4, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    if (p.spin > 0) ctx.rotate(p.spin * Math.PI * 2);
+    ctx.scale(facing * stretchX, stretchY);
 
     // Ears
     ctx.fillStyle = "#8a5a38";

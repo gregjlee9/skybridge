@@ -276,7 +276,7 @@
     hud.classList.add("hidden");
     const total = LEVEL.gems.length;
     overlayTitle.textContent = "You made it!";
-    overlayStory.textContent = `Coral gems: ${state.gemsCollected} / ${total}`;
+    overlayStory.textContent = `Gold gems: ${state.gemsCollected} / ${total}`;
     overlayStory.classList.remove("hidden");
     overlayControls.classList.add("hidden");
     overlayHint.textContent = "Press Space to play again.";
@@ -734,7 +734,7 @@
     if (g.taken) {
       if (g.spark > 0) {
         g.spark -= 0.04;
-        ctx.fillStyle = `rgba(255, 180, 140, ${g.spark})`;
+        ctx.fillStyle = `rgba(255, 214, 120, ${g.spark})`;
         for (let i = 0; i < 5; i++) {
           const a = state.time * 6 + i;
           ctx.beginPath();
@@ -749,9 +749,33 @@
     const y = g.y + bob;
     ctx.save();
     ctx.translate(x, y);
+
+    const stars = [
+      { ox: -8, oy: -20, phase: 0, r: 2.4 },
+      { ox: 7, oy: -24, phase: 1.7, r: 1.7 },
+      { ox: 1, oy: -16, phase: 3.1, r: 1.4 },
+    ];
+    for (const st of stars) {
+      const sy = st.oy + Math.sin(state.time * 2.6 + g.x * 0.02 + st.phase) * 2.4;
+      ctx.globalAlpha = 0.55 + 0.45 * Math.sin(state.time * 5 + st.phase);
+      ctx.fillStyle = "#fff6c2";
+      ctx.beginPath();
+      ctx.moveTo(st.ox, sy - st.r);
+      ctx.lineTo(st.ox + st.r * 0.32, sy - st.r * 0.32);
+      ctx.lineTo(st.ox + st.r, sy);
+      ctx.lineTo(st.ox + st.r * 0.32, sy + st.r * 0.32);
+      ctx.lineTo(st.ox, sy + st.r);
+      ctx.lineTo(st.ox - st.r * 0.32, sy + st.r * 0.32);
+      ctx.lineTo(st.ox - st.r, sy);
+      ctx.lineTo(st.ox - st.r * 0.32, sy - st.r * 0.32);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
     ctx.rotate(Math.sin(state.time * 2 + g.x) * 0.15);
-    // Coral gem diamond
-    ctx.fillStyle = "#ef7a6a";
+    // Gold gem diamond
+    ctx.fillStyle = "#e6b325";
     ctx.beginPath();
     ctx.moveTo(0, -11);
     ctx.lineTo(9, 0);
@@ -759,14 +783,13 @@
     ctx.lineTo(-9, 0);
     ctx.closePath();
     ctx.fill();
-    ctx.fillStyle = "#ffb09e";
+    ctx.fillStyle = "#ffe28a";
     ctx.beginPath();
     ctx.moveTo(0, -11);
     ctx.lineTo(9, 0);
     ctx.lineTo(0, 0);
     ctx.closePath();
     ctx.fill();
-    // Sparkle
     if (Math.sin(state.time * 8 + g.x) > 0.7) {
       ctx.fillStyle = "#fff";
       ctx.fillRect(2, -6, 2, 2);
@@ -883,34 +906,58 @@
     if (p.spin > 0) ctx.rotate(p.spin * Math.PI * 2);
     ctx.scale(facing * stretchX, stretchY);
 
-    // Ears
+    // Katana strapped across the back.
+    ctx.save();
+    ctx.translate(2, 2);
+    ctx.rotate(-0.9);
+    ctx.fillStyle = "#1a2230";
+    ctx.fillRect(-2.2, -14, 4.4, 28);
+    ctx.fillStyle = "#c9a24a";
+    ctx.fillRect(-2.2, 12, 4.4, 3);
+    ctx.fillStyle = "#e6c15a";
+    ctx.beginPath();
+    ctx.ellipse(0, -14, 6.2, 2.1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#2c1812";
+    ctx.fillRect(-1.6, -26, 3.2, 12);
+    ctx.strokeStyle = "#e6d3b0";
+    ctx.lineWidth = 0.7;
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(-1.6, -24 + i * 2.5);
+      ctx.lineTo(1.6, -22.8 + i * 2.5);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // Ninja suit
+    ctx.fillStyle = "#243044";
+    ctx.beginPath();
+    ctx.ellipse(0, 2, 13, 13.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hood
+    ctx.fillStyle = "#1b2433";
+    ctx.beginPath();
+    ctx.ellipse(0, -4, 12, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ears poke through the hood
     ctx.fillStyle = "#8a5a38";
     ctx.beginPath();
-    ctx.arc(-9, -11, 5, 0, Math.PI * 2);
-    ctx.arc(9, -11, 5, 0, Math.PI * 2);
+    ctx.arc(-9, -12, 5, 0, Math.PI * 2);
+    ctx.arc(9, -12, 5, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = "#d4a090";
     ctx.beginPath();
-    ctx.arc(-9, -11, 2.5, 0, Math.PI * 2);
-    ctx.arc(9, -11, 2.5, 0, Math.PI * 2);
+    ctx.arc(-9, -12, 2.5, 0, Math.PI * 2);
+    ctx.arc(9, -12, 2.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Body
-    ctx.fillStyle = "#8b5a3c";
-    ctx.beginPath();
-    ctx.ellipse(0, 1, 13, 13.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Belly
-    ctx.fillStyle = "#d4b896";
-    ctx.beginPath();
-    ctx.ellipse(0, 5, 8, 8, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Muzzle
+    // Face
     ctx.fillStyle = "#c9a882";
     ctx.beginPath();
-    ctx.ellipse(0, 2, 7, 5.5, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 1, 7.5, 6, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Eyes
@@ -936,8 +983,22 @@
     ctx.arc(-1, noseY - 0.6, 0.7, 0, Math.PI * 2);
     ctx.fill();
 
-    // Paws
-    ctx.fillStyle = "#7a4e34";
+    // Headband and sash
+    ctx.fillStyle = "#c23b3b";
+    ctx.fillRect(-11, -6.5, 22, 3);
+    ctx.beginPath();
+    ctx.moveTo(11, -6.2);
+    ctx.lineTo(17, -9);
+    ctx.lineTo(16, -3.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = "#9a3030";
+    ctx.fillRect(-12, 5, 24, 3.5);
+    ctx.fillStyle = "#e6c15a";
+    ctx.fillRect(-1.5, 4.2, 3, 5);
+
+    // Wrapped paws
+    ctx.fillStyle = "#1c2430";
     if (airborne) {
       // Arms out
       ctx.beginPath();

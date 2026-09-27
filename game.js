@@ -243,6 +243,7 @@
       facing: 1,
       coyote: 0,
       buffer: 0,
+      airJumps: 1,
       jumpHeld: false,
       anim: 0,
       runPhase: 0,
@@ -325,6 +326,7 @@
     p.onGround = false;
     p.coyote = 0;
     p.buffer = 0;
+    p.airJumps = 1;
     p.riding = null;
     p.invuln = 0.6;
     state.flash = 0.35;
@@ -416,19 +418,32 @@
       else if (p.vx < 0) p.vx = Math.min(0, p.vx + fr * dt);
     }
 
-    // Coyote / buffer
-    if (p.onGround) p.coyote = COYOTE_MS / 1000;
-    else p.coyote = Math.max(0, p.coyote - dt);
+    // Coyote / buffer. Landing refills the extra midair jump.
+    if (p.onGround) {
+      p.coyote = COYOTE_MS / 1000;
+      p.airJumps = 1;
+    } else {
+      p.coyote = Math.max(0, p.coyote - dt);
+    }
 
     if (jumpPressedThisFrame) p.buffer = BUFFER_MS / 1000;
     else p.buffer = Math.max(0, p.buffer - dt);
 
-    // Jump
+    // Ground jump, then one extra jump in the air.
     if (p.buffer > 0 && p.coyote > 0) {
       p.vy = JUMP_V;
       p.onGround = false;
       p.coyote = 0;
       p.buffer = 0;
+      p.jumpHeld = true;
+      p.stretch = 1;
+      sfxJump();
+    } else if (p.buffer > 0 && p.airJumps > 0) {
+      p.vy = JUMP_V;
+      p.onGround = false;
+      p.coyote = 0;
+      p.buffer = 0;
+      p.airJumps -= 1;
       p.jumpHeld = true;
       p.stretch = 1;
       sfxJump();
@@ -455,6 +470,7 @@
         p.vy = BOUNCE_V;
         p.onGround = false;
         p.coyote = 0;
+        p.airJumps = 1;
         p.jumpHeld = wantJumpHeld();
         p.stretch = 1.2;
         sfxBounce();

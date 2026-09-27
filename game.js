@@ -40,28 +40,27 @@
   const RIGHT_CODES = new Set(["ArrowRight", "KeyD"]);
 
   function isTouchNoKeyboard() {
+    // Coarse pointer or no hover means this device is touch-primary.
+    // A stylus can report a fine pointer, so that must not hide the warning.
     const coarse = window.matchMedia("(pointer: coarse)").matches;
     const noHover = window.matchMedia("(hover: none)").matches;
-    const touchPoints = navigator.maxTouchPoints > 0;
-    // Treat as touch-primary if coarse pointer / no hover and no physical keyboard hint
-    return (coarse || noHover || touchPoints) && !window.matchMedia("(any-pointer: fine)").matches;
+    return coarse || noHover;
   }
 
   window.addEventListener("keydown", (e) => {
+    if (!mute) ensureAudio();
     if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) {
       e.preventDefault();
     }
     if (!keys[e.code]) {
-      if (JUMP_CODES.has(e.code)) jumpPressedThisFrame = true;
+      const confirmsOverlay = e.code === "Space" && (state.mode === "start" || state.mode === "win");
+      if (JUMP_CODES.has(e.code) && !confirmsOverlay) jumpPressedThisFrame = true;
       if (e.code === "KeyR" && state.mode === "play") restartLevel();
       if (e.code === "KeyM") {
         mute = !mute;
         if (!mute) ensureAudio();
       }
-      if (e.code === "Space") {
-        if (state.mode === "start") startGame();
-        else if (state.mode === "win") startGame();
-      }
+      if (confirmsOverlay) startGame();
     }
     keys[e.code] = true;
   });
@@ -83,6 +82,17 @@
     return false;
   }
 
+  function releaseStuckKeys() {
+    for (const code of Object.keys(keys)) keys[code] = false;
+    jumpPressedThisFrame = false;
+    if (state.player) state.player.jumpHeld = false;
+  }
+
+  window.addEventListener("blur", releaseStuckKeys);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) releaseStuckKeys();
+  });
+
   // —— Audio ——
   let audioCtx = null;
 
@@ -95,7 +105,9 @@
   }
 
   function beep(freq, dur, type, vol, slide) {
-    if (mute || !audioCtx) return;
+    if (mute) return;
+    ensureAudio();
+    if (!audioCtx) return;
     const t0 = audioCtx.currentTime;
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
@@ -153,16 +165,16 @@
       { x: 1160, y: 416, w: 40, h: 140, kind: "stone" },
       { x: 1280, y: 416, w: 40, h: 140, kind: "stone" },
       { x: 1400, y: 416, w: 40, h: 140, kind: "stone" },
-      // After bridge
-      { x: 1500, y: 400, w: 180, h: 160, kind: "grass" },
+      // After bridge, extended so the bounce pad sits on the ground
+      { x: 1500, y: 400, w: 236, h: 160, kind: "grass" },
       // Higher island
       { x: 1760, y: 300, w: 220, h: 260, kind: "grass" },
       // Mid ledge before moving platform gap
       { x: 2060, y: 340, w: 120, h: 220, kind: "sand" },
       // Far side of wide gap (after moving platform)
       { x: 2480, y: 360, w: 200, h: 200, kind: "grass" },
-      // Checkpoint meadow
-      { x: 2740, y: 400, w: 280, h: 160, kind: "grass" },
+      // Checkpoint meadow, extended so the bounce pad sits on the ground
+      { x: 2740, y: 400, w: 336, h: 160, kind: "grass" },
       // Spike island approach
       { x: 3100, y: 380, w: 160, h: 180, kind: "sand" },
       // Safe pads around spikes
@@ -199,7 +211,8 @@
       { x: 3600, y: 280 },
     ],
     spikes: [
-      { x: 3180, y: 380, w: 72 },
+      // Far enough right that a full-speed bounce from the meadow lands short of them
+      { x: 3220, y: 380, w: 40 },
       { x: 3460, y: 360, w: 80 },
     ],
     bounces: [
@@ -208,7 +221,7 @@
     ],
     checkpoint: { x: 2840, y: 400, w: 48 },
     goal: { x: 4020, y: 260, w: 100, h: 120 },
-    spawn: { x: 80, y: 360 },
+    spawn: { x: 80, y: 420 - PLAYER_H },
   };
 
   // —— State ——
@@ -297,6 +310,9 @@
     state.movers = cloneMovers();
     resetGems();
     state.player = makePlayer(LEVEL.spawn.x, LEVEL.spawn.y);
+    state.player.onGround = true;
+    state.player.coyote = COYOTE_MS / 1000;
+    jumpPressedThisFrame = false;
     state.cameraX = 0;
     state.flash = 0;
     hideOverlay();
@@ -340,37 +356,60 @@
     return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
   }
 
+  function playerBody(p) {
+    return { x: p.x, y: p.y, w: PLAYER_W, h: PLAYER_H };
+  }
+
   function solidList() {
     return state.movers.concat(LEVEL.platforms);
+  }
+
+  function landOn(p, s) {
+    p.y = s.y - PLAYER_H;
+    p.vy = 0;
+    p.onGround = true;
+    if (state.movers.includes(s)) p.riding = s;
   }
 
   function resolvePlatforms(p, dt) {
     p.onGround = false;
     p.riding = null;
 
-    // Horizontal
+    const prevY = p.y;
     p.x += p.vx * dt;
     for (const s of solidList()) {
-      const body = { x: p.x, y: p.y, w: PLAYER_W, h: PLAYER_H };
-      if (!rectsOverlap(body, s)) continue;
-      if (p.vx > 0) p.x = s.x - PLAYER_W;
-      else if (p.vx < 0) p.x = s.x + s.w;
-      p.vx = 0;
+      if (!rectsOverlap(playerBody(p), s)) continue;
+      // Still above this solid: let the vertical pass land on it instead of shoving sideways.
+      if (p.vy >= 0 && prevY + PLAYER_H <= s.y + 1) continue;
+      const fromLeft = p.x + PLAYER_W - s.x;
+      const fromRight = s.x + s.w - p.x;
+      if (fromLeft < fromRight) {
+        p.x -= fromLeft;
+        if (p.vx > 0) p.vx = 0;
+      } else {
+        p.x += fromRight;
+        if (p.vx < 0) p.vx = 0;
+      }
     }
 
-    // Vertical
     p.y += p.vy * dt;
     for (const s of solidList()) {
-      const body = { x: p.x, y: p.y, w: PLAYER_W, h: PLAYER_H };
-      if (!rectsOverlap(body, s)) continue;
-      if (p.vy > 0) {
-        p.y = s.y - PLAYER_H;
-        p.vy = 0;
-        p.onGround = true;
-        if (state.movers.includes(s)) p.riding = s;
-      } else if (p.vy < 0) {
+      if (!rectsOverlap(playerBody(p), s)) continue;
+      const prevBottom = prevY + PLAYER_H;
+      const prevTop = prevY;
+      if (p.vy >= 0 && prevBottom <= s.y + 1) {
+        landOn(p, s);
+      } else if (p.vy < 0 && prevTop >= s.y + s.h - 1) {
         p.y = s.y + s.h;
         p.vy = 0;
+      } else {
+        const penTop = p.y + PLAYER_H - s.y;
+        const penBottom = s.y + s.h - p.y;
+        if (penTop < penBottom) landOn(p, s);
+        else {
+          p.y = s.y + s.h;
+          if (p.vy < 0) p.vy = 0;
+        }
       }
     }
   }
@@ -420,39 +459,7 @@
       else if (p.vx < 0) p.vx = Math.min(0, p.vx + fr * dt);
     }
 
-    // Coyote / buffer. Landing refills the extra midair jump.
-    if (p.onGround) {
-      p.coyote = COYOTE_MS / 1000;
-      p.airJumps = 1;
-    } else {
-      p.coyote = Math.max(0, p.coyote - dt);
-    }
-
-    if (jumpPressedThisFrame) p.buffer = BUFFER_MS / 1000;
-    else p.buffer = Math.max(0, p.buffer - dt);
-
-    // Ground jump, then one extra jump in the air.
-    if (p.buffer > 0 && p.coyote > 0) {
-      p.vy = JUMP_V;
-      p.onGround = false;
-      p.coyote = 0;
-      p.buffer = 0;
-      p.jumpHeld = true;
-      p.stretch = 1;
-      sfxJump();
-    } else if (p.buffer > 0 && p.airJumps > 0) {
-      p.vy = JUMP_V;
-      p.onGround = false;
-      p.coyote = 0;
-      p.buffer = 0;
-      p.airJumps -= 1;
-      p.jumpHeld = true;
-      p.stretch = 1;
-      p.spin = 0.001;
-      sfxJump();
-    }
-
-    // Variable jump cut
+    // Cut a jump that started on an earlier step, before this step moves.
     if (p.jumpHeld && !wantJumpHeld() && p.vy < 0) {
       p.vy *= JUMP_CUT;
       p.jumpHeld = false;
@@ -464,28 +471,66 @@
 
     resolvePlatforms(p, dt);
 
-    // Bounce mushrooms
+    // Coyote / buffer after collision, so landing on this step is a ground jump.
+    if (p.onGround) {
+      p.coyote = COYOTE_MS / 1000;
+      p.airJumps = 1;
+    } else {
+      p.coyote = Math.max(0, p.coyote - dt);
+    }
+
+    if (jumpPressedThisFrame) p.buffer = BUFFER_MS / 1000;
+    else p.buffer = Math.max(0, p.buffer - dt);
+
+    // Bounce mushrooms. A pad launch is not a variable-height jump.
     for (const b of LEVEL.bounces) {
       const pad = { x: b.x, y: b.y - 18, w: b.w, h: 18 };
-      const body = { x: p.x, y: p.y, w: PLAYER_W, h: PLAYER_H };
-      if (rectsOverlap(body, pad) && p.vy >= 0) {
+      if (rectsOverlap(playerBody(p), pad) && p.vy >= 0) {
         p.y = pad.y - PLAYER_H;
         p.vy = BOUNCE_V;
         p.onGround = false;
         p.coyote = 0;
+        p.buffer = 0;
         p.airJumps = 1;
-        p.jumpHeld = wantJumpHeld();
+        p.jumpHeld = false;
         p.stretch = 1.2;
         sfxBounce();
       }
     }
 
-    // Gems
+    // Ground jump, then one extra jump in the air. A rising bounce is not slowed.
+    if (p.buffer > 0 && (p.onGround || p.coyote > 0)) {
+      p.vy = JUMP_V;
+      p.onGround = false;
+      p.coyote = 0;
+      p.buffer = 0;
+      p.jumpHeld = true;
+      p.stretch = 1;
+      sfxJump();
+    } else if (p.buffer > 0 && !p.onGround && p.airJumps > 0) {
+      p.vy = Math.min(p.vy, JUMP_V);
+      p.onGround = false;
+      p.coyote = 0;
+      p.buffer = 0;
+      p.airJumps -= 1;
+      p.jumpHeld = true;
+      p.stretch = 1;
+      p.spin = 0.001;
+      sfxJump();
+    }
+
+    if (p.jumpHeld && !wantJumpHeld() && p.vy < 0) {
+      p.vy *= JUMP_CUT;
+      p.jumpHeld = false;
+    }
+
+    // Gems. The box follows the bobbing diamond, not the sparkle stars.
     for (const g of state.gemStates) {
+      if (g.spark > 0) g.spark = Math.max(0, g.spark - dt * 2.4);
       if (g.taken) continue;
-      const gem = { x: g.x - 10, y: g.y - 10, w: 20, h: 20 };
-      const body = { x: p.x, y: p.y, w: PLAYER_W, h: PLAYER_H };
-      if (rectsOverlap(body, gem)) {
+      const bob = gemBob(g);
+      const gem = { x: g.x - 9, y: g.y + bob - 11, w: 18, h: 22 };
+      if (rectsOverlap(playerBody(p), gem)) {
         g.taken = true;
         g.spark = 1;
         state.gemsCollected++;
@@ -497,7 +542,7 @@
     // Checkpoint
     const cp = LEVEL.checkpoint;
     const banner = { x: cp.x, y: cp.y - 80, w: cp.w, h: 80 };
-    const body = { x: p.x, y: p.y, w: PLAYER_W, h: PLAYER_H };
+    const body = playerBody(p);
     if (!state.checkpointReached && rectsOverlap(body, banner)) {
       state.checkpointReached = true;
       state.spawn = { x: cp.x + 8, y: cp.y - PLAYER_H - 2 };
@@ -730,10 +775,13 @@
     }
   }
 
+  function gemBob(g) {
+    return Math.sin(state.time * 3 + g.x * 0.05) * 4;
+  }
+
   function drawGem(g) {
     if (g.taken) {
       if (g.spark > 0) {
-        g.spark -= 0.04;
         ctx.fillStyle = `rgba(255, 214, 120, ${g.spark})`;
         for (let i = 0; i < 5; i++) {
           const a = state.time * 6 + i;
@@ -744,7 +792,7 @@
       }
       return;
     }
-    const bob = Math.sin(state.time * 3 + g.x * 0.05) * 4;
+    const bob = gemBob(g);
     const x = g.x;
     const y = g.y + bob;
     ctx.save();
@@ -1023,6 +1071,10 @@
       ctx.fill();
     } else {
       ctx.beginPath();
+      ctx.ellipse(-11, 4, 3.5, 2.8, 0.5, 0, Math.PI * 2);
+      ctx.ellipse(11, 4, 3.5, 2.8, -0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
       ctx.ellipse(-8, 12, 4.5, 3, 0.15, 0, Math.PI * 2);
       ctx.ellipse(8, 12, 4.5, 3, -0.15, 0, Math.PI * 2);
       ctx.fill();
@@ -1075,15 +1127,24 @@
   }
 
   // —— Loop ——
+  const STEP = 1 / 60;
+  const MAX_FRAME = 0.1;
+  let accumulator = 0;
   let last = performance.now();
   function frame(now) {
-    let dt = (now - last) / 1000;
+    let frameDt = (now - last) / 1000;
     last = now;
-    if (dt > 0.05) dt = 0.05;
-
-    update(dt);
+    if (frameDt > MAX_FRAME) frameDt = MAX_FRAME;
+    accumulator += frameDt;
+    let steps = 0;
+    while (accumulator >= STEP && steps < 6) {
+      update(STEP);
+      jumpPressedThisFrame = false;
+      accumulator -= STEP;
+      steps++;
+    }
+    if (steps === 6) accumulator = 0;
     render();
-    jumpPressedThisFrame = false;
     requestAnimationFrame(frame);
   }
 

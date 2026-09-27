@@ -8,10 +8,12 @@
 </head>
 <body>
   <div id="game-wrap">
-    <canvas id="game" width="960" height="540" aria-label="Skybridge game"></canvas>
+    <div id="stage">
+      <canvas id="game" width="960" height="540" aria-label="Skybridge game"></canvas>
 
-    <div id="hud" class="hud hidden" aria-live="polite">
-      <span id="gem-hud">Gems: 0</span>
+      <div id="hud" class="hud hidden" aria-live="polite">
+        <span id="gem-hud">Gems: 0</span>
+      </div>
     </div>
 
     <div id="overlay" class="overlay" role="dialog" aria-labelledby="overlay-title">
